@@ -24,50 +24,53 @@ used and may contain subtle and critical defects.
 # Quick start
 
 In your `Cargo.toml` you need to add:
+```toml
+[dependencies]
+...
+tracers = "0.1.0"
+tracers-macros = "0.1.0"
 
-    [dependencies]
-    ...
-    tracers = "0.1.0"
-    tracers-macros = "0.1.0"
-
-    [build-dependencies]
-    ...
-    tracers-build = "0.1.0"
+[build-dependencies]
+...
+tracers-build = "0.1.0"
+```
 
 It's important not to forget to add `tracers-build` to your `build-dependencies`, because you'll need that available at
 build time for the next step, which is to create a `src/build.rs` file if you don't have one already, and make sure it
 contains this:
-
+```rust
     use tracers_build::build;
 
     fn main() {
 	build();
     }
+```
 
 If you have an existing `build.rs` you'll need to make sure you add a call to `tracers_build::build()` somewhere in the
 `main` function, preferably early.
 
 At this point you have all you need to define a tracer.  Here's a simple example:
+```rust
+use tracers_macros::{probe, tracer};
 
-    use tracers_macros::{probe, tracer};
+#[tracer]
+trait SimpleProbes {
+    fn hello(who: &str);
+    fn greeting(greeting: &str, name: &str);
+    fn optional_greeting(greeting: &str, name: &Option<&str>);
+}
 
-    #[tracer]
-    trait SimpleProbes {
-	fn hello(who: &str);
-	fn greeting(greeting: &str, name: &str);
-	fn optional_greeting(greeting: &str, name: &Option<&str>);
+fn main() {
+    loop {
+        probe!(SimpleProbes::hello("world"));
+        probe!(SimpleProbes::greeting("hello", "world"));
+        let name = Some("world");
+        probe!(SimpleProbes::optional_greeting("hello", &name));
+        let name: Option<&str> = None;
+	probe!(SimpleProbes::optional_greeting("hello", &name));
     }
-
-    fn main() {
-	loop {
-	    probe!(SimpleProbes::hello("world"));
-	    probe!(SimpleProbes::greeting("hello", "world"));
-	    let name = Some("world");
-	    probe!(SimpleProbes::optional_greeting("hello", &name));
-	    let name: Option<&str> = None;
-	    probe!(SimpleProbes::optional_greeting("hello", &name));
-	}
-    }
+}
+```
 
 You have have defined three probes, `hello`, `greeting`, and `optional_greeting`.  By default, tracing is disabled at
 compile time, so when you run this code all of the probing infrastructure will be optimized away and you'll be left with
@@ -75,10 +78,11 @@ zero runtime overhead.
 
 To actually enable probing you need to activate one of the corresponding features in the `tracers` crate.  For example,
 in your `Cargo.toml`:
-
-    [dependencies]
-    ...
-    tracers = { version = "0.1.0", features = [ "force_static_stap"]
+```toml
+[dependencies]
+...
+tracers = { version = "0.1.0", features = [ "force_static_stap"]
+```
 
 will enable SystemTap tracing.  If you rebuild again and use a tool like `tplist` from
 [BCC](https://github.com/iovisor/bcc) you should be able to see the probes in the binary.
